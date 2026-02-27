@@ -11,7 +11,17 @@ import {
     DroppableProvided,
     DroppableStateSnapshot,
 } from 'react-beautiful-dnd';
-import { listContent, deleteTracks, moveTrack, groupTracks, deleteGroups, dragDropTrack, ejectDisc, flushDevice } from '../redux/actions';
+import {
+    listContent,
+    deleteTracks,
+    moveTrack,
+    groupTracks,
+    deleteGroups,
+    applyGroupEdits,
+    dragDropTrack,
+    ejectDisc,
+    flushDevice,
+} from '../redux/actions';
 import { actions as renameDialogActions, RenameType } from '../redux/rename-dialog-feature';
 import { actions as convertDialogActions } from '../redux/convert-dialog-feature';
 import { actions as dumpDialogActions } from '../redux/dump-dialog-feature';
@@ -73,6 +83,7 @@ import { FactoryModeBadSectorDialog } from './factory/factory-bad-sector-dialog'
 import { DiscProtectedDialog } from './disc-protected-dialog';
 import { ContextMenu } from './context-menu';
 import { LocalLibraryDialog } from './local-library';
+import { GroupEditDialog } from './group-edit-dialog';
 import { Menu, MenuItem } from '@mui/material';
 import serviceRegistry from '../services/registry';
 
@@ -192,6 +203,7 @@ export const Main = (props: {}) => {
     const [lastClicked, setLastClicked] = useState(-1);
     const [moveMenuAnchorEl, setMoveMenuAnchorEl] = React.useState<null | HTMLElement>(null);
     const [showRemainingSpace, setShowRemainingSpace] = useState(true);
+    const [groupEditDialogVisible, setGroupEditDialogVisible] = useState(false);
 
     const deviceCapabilities = useDeviceCapabilities();
     const minidiscSpec = serviceRegistry.netmdSpec;
@@ -274,6 +286,7 @@ export const Main = (props: {}) => {
     const { classes, cx } = useStyles();
     const tracks = useMemo(() => getSortedTracks(disc), [disc]);
     const groupedTracks = useMemo(() => getGroupedTracks(disc), [disc]);
+    const editableGroups = useMemo(() => groupedTracks.filter((g) => g.title !== null && g.index !== -1), [groupedTracks]);
     const defaultCodecName = minidiscSpec ? getDefaultCodecName(minidiscSpec) : '';
 
     // Action Handlers
@@ -424,6 +437,24 @@ export const Main = (props: {}) => {
         [dispatch, selectedGroups, setSelectedGroups]
     );
 
+    const handleOpenGroupEditDialog = useCallback(() => {
+        setSelected([]);
+        setSelectedGroups([]);
+        setGroupEditDialogVisible(true);
+    }, [setSelected, setSelectedGroups]);
+
+    const handleCloseGroupEditDialog = useCallback(() => {
+        setGroupEditDialogVisible(false);
+    }, []);
+
+    const handleApplyGroupEdits = useCallback(
+        (groups: { index: number; title: string; ungroup: boolean }[]) => {
+            setGroupEditDialogVisible(false);
+            dispatch(applyGroupEdits(groups));
+        },
+        [dispatch]
+    );
+
     const handleEject = useCallback(
         (event: React.MouseEvent) => {
             dispatch(ejectDisc());
@@ -565,7 +596,11 @@ export const Main = (props: {}) => {
                         </Tooltip>
                     )}
 
-                    <TopMenu tracksSelected={selected} />
+                    <TopMenu
+                        tracksSelected={selected}
+                        groupEditAvailable={selectedCount === 0 && selectedGroupsCount === 0 && editableGroups.length > 1}
+                        onOpenGroupEdit={handleOpenGroupEditDialog}
+                    />
                 </span>
             </Box>
             <Typography component="h2" variant="body2">
@@ -842,6 +877,17 @@ export const Main = (props: {}) => {
             <ChangelogDialog />
             <SettingsDialog />
             <LocalLibraryDialog setUploadedFiles={setUploadedFiles} />
+            <GroupEditDialog
+                visible={groupEditDialogVisible}
+                groups={editableGroups.map((g) => ({
+                    index: g.index,
+                    title: g.title ?? '',
+                    trackCount: g.tracks.length,
+                    duration: g.tracks.reduce((acc, t) => acc + t.duration, 0),
+                }))}
+                onClose={handleCloseGroupEditDialog}
+                onApply={handleApplyGroupEdits}
+            />
             <PanicDialog />
             <ContextMenu onTogglePlayPause={handleTogglePlayPauseTrack} onRename={handleRenameTrack} onDelete={handleDeleteTrack} />
         </React.Fragment>

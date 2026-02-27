@@ -133,6 +133,91 @@ export function deleteGroups(indexes: number[]) {
     };
 }
 
+export function applyGroupEdits(edits: { index: number; title: string; ungroup: boolean }[]) {
+    return async function (dispatch: AppDispatch) {
+        dispatch(appStateActions.setLoading(true));
+        const { netmdService } = serviceRegistry;
+
+        const groupedTracks = getGroupedTracks(await netmdService!.listContent());
+        const ungrouped = groupedTracks.find((g) => g.title === null || g.index === -1) ?? null;
+        const titledGroups = groupedTracks.filter((g) => g.title !== null && g.index !== -1);
+        const groupByIndex = new Map(titledGroups.map((g) => [g.index, g]));
+        const editByIndex = new Map(edits.map((e) => [e.index, e]));
+        const orderedGroupIndexes = edits.map((e) => e.index);
+
+        const orderedTitledGroups = orderedGroupIndexes
+            .map((idx) => groupByIndex.get(idx))
+            .filter((g): g is NonNullable<typeof g> => g !== undefined);
+
+        if (orderedTitledGroups.length !== titledGroups.length) {
+            dispatch(appStateActions.setLoading(false));
+            throw new Error('Invalid group reorder request');
+        }
+
+        const groupsInDesiredOrder = (ungrouped ? [ungrouped] : []).concat(orderedTitledGroups);
+        const currentTrackOrder = groupedTracks.flatMap((g) => g.tracks).sort((a, b) => a.index - b.index);
+        const desiredTrackOrder = groupsInDesiredOrder.flatMap((g) => g.tracks);
+
+        for (let dst = 0; dst < desiredTrackOrder.length; dst++) {
+            const track = desiredTrackOrder[dst];
+            const src = currentTrackOrder.indexOf(track);
+            if (src !== dst) {
+                await netmdService!.moveTrack(src, dst, false);
+                const [moved] = currentTrackOrder.splice(src, 1);
+                currentTrackOrder.splice(dst, 0, moved);
+            }
+        }
+
+        const withRecomputedIndices = groupsInDesiredOrder
+            .map((g) => ({
+                ...g,
+                tracks: g.tracks
+                    .map((t) => ({
+                        ...t,
+                        index: currentTrackOrder.indexOf(t),
+                    }))
+                    .sort((a, b) => a.index - b.index),
+            }))
+            .filter((g) => g.tracks.length > 0);
+
+        const ungroupedTracks = withRecomputedIndices
+            .filter((g) => g.title === null || (editByIndex.get(g.index)?.ungroup ?? false))
+            .flatMap((g) => g.tracks)
+            .sort((a, b) => a.index - b.index);
+
+        const titledGroupsForRewrite = withRecomputedIndices
+            .filter((g) => g.title !== null && !(editByIndex.get(g.index)?.ungroup ?? false))
+            .map((g) => {
+                const edit = editByIndex.get(g.index);
+                const editedTitle = edit?.title ?? g.title ?? '';
+                return {
+                    ...g,
+                    title: editedTitle.trim().length > 0 ? editedTitle : g.title,
+                };
+            });
+
+        const groupsForRewrite = [];
+        let nextIndex = 0;
+        if (ungroupedTracks.length > 0) {
+            groupsForRewrite.push({
+                index: nextIndex++,
+                title: null,
+                fullWidthTitle: null,
+                tracks: ungroupedTracks,
+            });
+        }
+        for (const group of titledGroupsForRewrite) {
+            groupsForRewrite.push({
+                ...group,
+                index: nextIndex++,
+            });
+        }
+
+        await netmdService!.rewriteGroups(groupsForRewrite);
+        listContent()(dispatch);
+    };
+}
+
 export function dragDropTrack(sourceList: number, sourceIndex: number, targetList: number, targetIndex: number) {
     // This code is here, because it would need to be duplicated in both netmd and netmd-mock.
     return async function (dispatch: AppDispatch, getState: () => RootState) {
@@ -1474,7 +1559,6 @@ export function convertAndUpload(files: TitledFile[], format: Codec, additionalP
                             const file = f.file as File;
                             try {
                                 await audioExportService!.prepare(file);
-
                                 data = await audioExportService!.export(exportParams, updateEncodeProgressCallback);
                                 totalBytesCalc += data.byteLength;
                                 convertNext();

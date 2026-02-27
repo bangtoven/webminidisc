@@ -42,6 +42,7 @@ import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import StorageIcon from '@mui/icons-material/Storage';
 import CodeIcon from '@mui/icons-material/Code';
+import ReorderIcon from '@mui/icons-material/Reorder';
 
 import { W95TopMenu } from './win95/topmenu';
 import { ExploitCapability } from '../services/interfaces/netmd';
@@ -69,7 +70,12 @@ const useStyles = makeStyles()((theme) => ({
     },
 }));
 
-export const TopMenu = function (props: { tracksSelected?: number[]; onClick?: () => void }) {
+export const TopMenu = function (props: {
+    tracksSelected?: number[];
+    onClick?: () => void;
+    groupEditAvailable?: boolean;
+    onOpenGroupEdit?: () => void;
+}) {
     const { classes } = useStyles();
     const dispatch = useDispatch();
 
@@ -152,6 +158,11 @@ export const TopMenu = function (props: { tracksSelected?: number[]; onClick?: (
         );
         handleMenuClose();
     }, [dispatch, handleMenuClose, discTitle, fullWidthDiscTitle]);
+
+    const handleOpenGroupEdit = useCallback(() => {
+        props.onOpenGroupEdit?.();
+        handleMenuClose();
+    }, [props, handleMenuClose]);
 
     const handleSelfTest = useCallback(() => {
         handleMenuClose();
@@ -406,6 +417,14 @@ export const TopMenu = function (props: { tracksSelected?: number[]; onClick?: (
                     <EditIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText>Rename Disc</ListItemText>
+            </MenuItem>
+        );
+        menuItems.push(
+            <MenuItem key="edit-groups" onClick={handleOpenGroupEdit} disabled={!props.groupEditAvailable || !deviceCapabilities.metadataEdit}>
+                <ListItemIcon className={classes.listItemIcon}>
+                    <ReorderIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Edit Groups</ListItemText>
             </MenuItem>
         );
         menuItems.push(
