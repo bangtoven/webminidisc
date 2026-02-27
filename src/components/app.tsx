@@ -261,6 +261,10 @@ const InternalApp = () => {
                         {', '}
                         <Link rel="noopener noreferrer" color="inherit" target="_blank" href="https://github.com/asivery/">
                             Asivery
+                        </Link>
+                        {', '}
+                        <Link rel="noopener noreferrer" color="inherit" target="_blank" href="https://github.com/nevotgnab">
+                            Jünghø
                         </Link>{' '}
                         {new Date().getFullYear()}
                         {'.'}

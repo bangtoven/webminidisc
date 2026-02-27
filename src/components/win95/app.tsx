@@ -103,7 +103,7 @@ export const W95App = () => {
                 <Window className={classes.window}>
                     <WindowHeader style={{ display: 'flex', alignItems: 'center' }}>
                         <img alt="CD Player" src={CDPlayerIconUrl} />
-                        <span style={{ flex: '1 1 auto', marginLeft: '4px' }}>Web MiniDisc Pro</span>
+                        <span style={{ flex: '1 1 auto', marginLeft: '4px' }}>Bew iniMDisc</span>
                         {mainView === 'MAIN' ? (
                             <Button onClick={handleExit}>
                                 <WindowCloseIcon />
@@ -132,6 +132,10 @@ export const W95App = () => {
                         {', '}
                         <Anchor rel="noopener noreferrer" color="inherit" target="_blank" href="https://github.com/asivery/">
                             Asivery
+                        </Anchor>
+                        {', '}
+                        <Anchor rel="noopener noreferrer" color="inherit" target="_blank" href="https://github.com/nevotgnab">
+                            Jünghø
                         </Anchor>{' '}
                         {new Date().getFullYear()}
                         {'.'}

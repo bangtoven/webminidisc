@@ -45,9 +45,9 @@ export const AboutDialog = (props: {}) => {
             TransitionComponent={Transition as any}
             aria-labelledby="about-dialog-slide-title"
         >
-            <DialogTitle id="about-dialog-slide-title">About Web MiniDisc Pro</DialogTitle>
+            <DialogTitle id="about-dialog-slide-title">About Bew iniMDisc</DialogTitle>
             <DialogContent>
-                <DialogContentText>Web MiniDisc Pro uses</DialogContentText>
+                <DialogContentText>Bew iniMDisc uses</DialogContentText>
                 <ul>
                     <li>
                         <Link rel="noopener noreferrer" href="https://www.ffmpeg.org/" target="_blank">
